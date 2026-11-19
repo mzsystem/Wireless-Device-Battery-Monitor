@@ -90,7 +90,6 @@ std::vector<DeviceStatus> PollAllDevices() {
     PollRoyalKludge(ctx);
     PollMchose(ctx);
     PollMchoseA5(ctx);
-    PollRapoo(ctx);
     PollAreson(ctx);
     PollMchoseG3(ctx);
     PollMsi(ctx);
@@ -101,6 +100,7 @@ std::vector<DeviceStatus> PollAllDevices() {
     PollVgn(ctx);
     PollMchoseKeyboard(ctx);  // 3837:3033 receiver, before the generic fallbacks
     PollMiscMice(ctx);
+    PollRapoo(ctx);  // after fast vendor polls: passive Rapoo reports may wait up to 5 s
     PollFantech(ctx);
     PollRazerHeadsets(ctx);  // before the generic Razer driver, which shares the vendor id
     PollBarracudaPro(ctx);   // before the generic Razer driver as well

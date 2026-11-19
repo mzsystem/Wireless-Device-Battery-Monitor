@@ -47,6 +47,7 @@ const Model kModels[] = {
     { 0x4618, 0x1418, L"Rapoo VT9 Max" },
     { 0x4415, 0x1215, L"Rapoo VT3 Pro" },
     { 0x4433, 0x1233, L"Rapoo VT1 Pro Max" },
+    { 0x4411, 0x1211, L"Rapoo VT9 Pro 4K" },
 };
 
 const Model* FindModel(USHORT pid) {
@@ -110,8 +111,11 @@ void PollRapoo(PollContext& ctx) {
         for (const HidColl* c : ctx.Find(vid, pid, [pid](const HidColl& c) {
                  // The other vendor collections are for configuration/firmware, not battery.
                  return c.page() == 0xFF00 && c.usage() == 0x0002 &&
-                        (c.inLen() == 16 || c.inLen() == 19 || (c.inLen() == 13 && pid == 0x1417) ||
-                         (c.inLen() == 7 && IsLegacyVT3Pro(pid)));
+                        (c.inLen() == 16 || c.inLen() == 19 ||
+                         (c.inLen() == 13 && pid == 0x1417) ||
+                         (c.inLen() == 7 && IsLegacyVT3Pro(pid)) ||
+                         ((pid == 0x1211 || pid == 0x4411) &&
+                          (c.inLen() == 7 || c.inLen() == 10)));
              })) {
             present.insert(c->path);
             auto& slot = g_rapoo[c->path];

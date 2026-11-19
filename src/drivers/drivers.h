@@ -121,7 +121,7 @@ void PollMchose(PollContext& ctx);    // MCHOSE mice (L7 / M7 / A7 / K7 families
 void PollMchoseA5(PollContext& ctx);  // MCHOSE A5 Pro / A5 Pro Max, first generation (VID 2023)
 void PollMachenike(PollContext& ctx); // Machenike L7 Arctic / L7 Mix, receiver 248A:FF4C and cable FF4E
 void PollNiceboy(PollContext& ctx);   // Niceboy MW400 on its 248A:FA02 receiver (before the other 248A pollers)
-void PollMiscMice(PollContext& ctx);  // Motospeed X6, Delux M900 Pro / M800 Pro, Ajazz AJ179 and AJ159/AJ-series
+void PollMiscMice(PollContext& ctx);  // Motospeed, Delux, Ajazz, and Lenovo Legion M7 mice
 void PollRazerHeadsets(PollContext& ctx);  // BlackShark V2 HyperSpeed / V2 Pro (2020/2023) / V3 variants, Barracuda X (2022)
 void PollFantech(PollContext& ctx);   // Fantech Helios Go XD5 (wired 25A7:FA7B, dongle 25A7:FA7C)
 std::wstring DumpXentaFrames();        // raw Xenta (1D57) status frames, for `--dump`

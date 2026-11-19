@@ -569,6 +569,86 @@ std::wstring DumpXentaFrames() {
     return out;
 }
 
+namespace {
+
+// Lenovo Legion M7 (USB: 17EF:6168; 2.4 GHz receiver: 17EF:6166).
+// Battery level is read through Feature Report 0x09, command 0x44.
+// Charging state is not reported by this transaction.
+void PollLegionM7(PollContext& ctx) {
+    constexpr USHORT VID = 0x17EF;
+    constexpr USHORT PID_WIRELESS = 0x6166;
+    constexpr USHORT PID_USB = 0x6168;
+    static BYTE seq = 1;
+
+    // The same M7 changes HID product identity when USB is connected.
+    // Prefer the wired interface; fall back to the receiver identity.
+    constexpr USHORT pids[] = { PID_USB, PID_WIRELESS };
+
+    for (USHORT pid : pids) {
+        if (ctx.IsClaimed(VID, pid)) continue;
+
+        for (const HidColl* c : ctx.Find(VID, pid, [](const HidColl& c) {
+                 return c.page() == 0xFF02 && c.usage() == 0x0002 && c.featLen() >= 520;
+             })) {
+            HidDev d;
+            if (!d.Open(*c)) continue;
+
+            std::vector<BYTE> req(c->featLen(), 0);
+            req[0] = 0x09;       // Feature report ID
+            req[2] = 0x44;       // CMD_CFG_R: read configuration (read-only)
+            req[3] = 0x00;
+            req[4] = 0x01;
+            req[5] = seq;
+            req[6] = 0x90;       // expected response length: 400 (0x0190)
+            req[7] = 0x01;
+
+            BYTE requestChecksum = 0;
+            for (size_t i = 2; i < req.size(); ++i)
+                requestChecksum = (BYTE)(requestChecksum + req[i]);
+            req[1] = requestChecksum;
+
+            ++seq;
+            if (!seq) seq = 1;
+            if (!d.SetFeature(req)) continue;
+
+            Sleep(120);
+            std::vector<BYTE> r;
+            if (!d.GetFeature(0x09, r) || r.size() < 9) continue;
+
+            USHORT responseLen = (USHORT)(r[6] | (r[7] << 8));
+            BYTE responseChecksum = 0;
+            for (size_t i = 2; i < r.size(); ++i)
+                responseChecksum = (BYTE)(responseChecksum + r[i]);
+            const bool checksumOk = responseChecksum == r[1] ||
+                                    (BYTE)(responseChecksum + 4) == r[1];
+
+            // Reject stale/garbled feature data. Both successful captures
+            // (6166 wireless and 6168 USB) passed this checksum rule.
+            if (r[0] != 0x09 || r[2] != 0x44 || responseLen != 400 ||
+                r[8] > 100 || !checksumOk)
+                continue;
+
+            DeviceStatus status;
+            // Keep one stable identity when the mouse switches between USB
+            // and 2.4 GHz, preserving its existing battery history/settings.
+            status.key = L"legionm7:6166";
+            status.name = L"Lenovo Legion M7";
+            status.kind = DeviceKind::Mouse;
+            status.via = (pid == PID_USB) ? L"USB cable" : L"2.4 GHz receiver";
+            status.percent = r[8];
+            // Charging is intentionally not inferred from this config reply.
+            ctx.Add(status, VID, pid);
+
+            // When both product identities are enumerated, they belong to
+            // the same M7; prevent a fallback from adding the other one again.
+            ctx.Claim(VID, pid == PID_USB ? PID_WIRELESS : PID_USB);
+            return;
+        }
+    }
+}
+
+}  // namespace
+
 void PollMiscMice(PollContext& ctx) {
     PollMotospeed(ctx);
     PollXenta(ctx);
@@ -578,4 +658,5 @@ void PollMiscMice(PollContext& ctx) {
     PollAjazzAj139(ctx);
     PollWraithW1(ctx);  // before PollIncott: same ids, different commands
     PollIncott(ctx);
+    PollLegionM7(ctx);
 }
